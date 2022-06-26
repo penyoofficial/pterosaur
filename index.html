@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Pterosaur 网页音乐播放器</title>
+    <link rel="shortcut icon" href="https://img1.imgtp.com/2023/01/25/4BTZ3HJy.ico" />
+    <link rel="stylesheet" href="master.css">
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.3/jquery.js"></script>
+    <script src="global.js"></script>
+</head>
+
+<body>
+    <audio loop src="" class="player"></audio>
+    <div class="bar top-bar">
+        <div class="main-logo">Pterosaur</div>
+        <ul class="modes">
+            <li>
+                <a class="mode chosen" id="netease" onclick="anamode('netease')">网易云音乐</a>
+            </li>
+            <li>
+                <a class="mode" id="qq" onclick="anamode('qq')">QQ音乐</a>
+            </li>
+            <li>
+                <a class="mode" id="kuwo" onclick="anamode('kuwo')">酷我音乐</a>
+            </li>
+            <li>
+                <a class="mode" id="spotify" onclick="anamode('spotify')">Spotify</a>
+            </li>
+        </ul>
+        <input type="text" class="id-giver" placeholder="在此输入歌曲ID...">
+    </div>
+    <div class="main-box">
+        <img class="cover" src="" alt="">
+        <p class="lyrics"></p>
+    </div>
+    <div class="bar bottom-bar">
+        <div class="bottom-locator1">
+            <button class="play" onclick="play()">▶</button>
+        </div>
+        <div class="bottom-locator2">
+            <strong class="song-title"></strong><br />
+            <strong class="song-author"></strong>
+        </div>
+    </div>
+</body>
+
+<script src="global-auto.js"></script>
+
+</html>
