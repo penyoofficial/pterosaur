@@ -1,62 +1,25 @@
-# pterosaur
+# Welcome to use Pterosaur
 
-This template should help get you started developing with Vue 3 in Vite.
+**Pterosaur** is a web-based music player which provides an ad-free and resource-integrated platform for users.
 
-## Recommended IDE Setup
+Remember, the software is developed for learning CS principle. We doesn't support it's used for commercial purposes, so we won't pay for any possible capital loss.
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+U must agree with it once u use. Thank u for your support.
 
-## Type Support for `.vue` Imports in TS
+## How to use
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
+Before building, you can only use **command** as following to boot the project:
 
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
-
-1. Disable the built-in TypeScript Extension
-    1) Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-    2) Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
+```text
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+Then visit the url poped in the terminal, it's offen <http://localhost:5173>.
 
-```sh
-npm run build
-```
+Five songs are pre-integrated. To add more songs, input *song's id* in the `input` component in the top right-hand corner. If everything goes well, the specified one will be added to the list.
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+The other components is very offen to see in other popular music softwares. So there is nothing to explain.
 
-```sh
-npm run test:unit
-```
+## Help the project goes well
 
-### Run End-to-End Tests with [Cypress](https://www.cypress.io/)
-
-```sh
-npm run test:e2e:dev
-```
-
-This runs the end-to-end tests against the Vite development server.
-It is much faster than the production build.
-
-But it's still recommended to test the production build with `test:e2e` before deploying (e.g. in CI environments):
-
-```sh
-npm run build
-npm run test:e2e
-```
+We need u to give us feedback after tryout. It can be functional recommandation or simple bugs report. No matter what u submit, we'll be pleased to receive.

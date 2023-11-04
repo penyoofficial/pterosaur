@@ -1,443 +1,274 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import router from "./router";
+import { useHistoryStore } from "./pinia/history";
+import type { State } from "./types/State";
+import { CycleType } from "./types/CycleType";
+import { WindowType } from "./types/WindowType";
+import ModernBar from "./components/ModernBar.vue";
+import ModernButton from "./components/ModernButton.vue";
+import ModernSearcher from "./components/ModernSearcher.vue";
+import SongInfo from "./components/SongInfo.vue";
+import Player from "./components/Player.vue";
+import SvgIcon from "@jamescoyle/vue-icon";
+import {
+  mdiRepeatOff,
+  mdiRepeat,
+  mdiRepeatOnce,
+  mdiShuffle,
+  mdiCardText,
+  mdiPlaylistMusic,
+  mdiVolumeSource,
+  mdiVolumeMute,
+  mdiBug,
+} from "@mdi/js";
 
-/** 平台 */
-type Platform = "ncm" | "qqm" | "kwm";
+const isNightMode = ref(false);
 
-/** 平台译名 */
-const platformTranslation = ref(
-  new Map<Platform, string>([
-    ["ncm", "网易云音乐"],
-    ["qqm", "QQ音乐"],
-    ["kwm", "酷我音乐"],
-  ]),
-);
+const songs = ref(useHistoryStore().getSongs());
 
-/** 接口库 */
-const apis = new Map<Platform, Function>([
-  [
-    "ncm",
-    async (id: string) => {
-      const j = await (
-        await fetch(`https://api.paugram.com/netease/?id=${id}`)
-      ).json();
-      return {
-        title: j.title,
-        artist: j.artist,
-        lyrics: j.lyric,
-        mediaLink: j.link,
-        coverLink: j.cover,
-      };
-    },
-  ],
-  [
-    "kwm",
-    async (id: string) => {
-      const j = await (
-        await fetch(
-          `https://antiserver.kuwo.cn/anti.s?type=convert_url3&format=mp3&rid=${id}`,
-        )
-      ).json();
-      return {
-        title: "未知标题",
-        artist: "未知艺术家",
-        lyrics: "无法获取到歌词。",
-        mediaLink: j.url,
-        coverLink: "",
-      };
-    },
-  ],
-]);
+const focusId = ref(songs.value[0]?.id || "");
 
-/** 当前配置 */
-const localOptions = ref<{
-  platform: Platform;
-  id: string;
-  idExplict: string;
-  isPlaying: boolean;
-}>({
-  platform: "ncm",
-  id: "",
-  idExplict: "",
+const state = ref<State>({
   isPlaying: false,
-});
-
-/** 当前数据 */
-const localData = ref({
-  title: "",
-  artist: "",
-  lyrics: "",
-  mediaLink: "",
-  coverLink: "",
-});
-
-/** 当前状态 */
-const localState = ref({
   playedTime: 0,
+  delta: 0,
   totalTime: 0,
+  cycleType: CycleType.REPEAT_OFF,
+  isMute: false,
 });
-
-/**
- * 确定解析模块。
- *
- * @param platform 解析模块
- */
-function changePlatform(platform: Platform) {
-  if (!apis.get(platform)) return alert("该模块暂不可用。");
-
-  localOptions.value.platform = platform;
-  document.querySelectorAll(".mode").forEach((e) => {
-    e.classList.remove("chosen");
-    if (e.id == platform) e.classList.add("chosen");
-  });
-}
 
 /**
  * 更新歌曲信息。
  *
- * @param id 歌曲识别符。若未提供则从输入框中获取
+ * @param id 歌曲 ID
  */
-async function update(id?: string) {
-  if (!id) id = localOptions.value.idExplict;
-
-  const j: typeof localData.value = await (
-    apis.get(localOptions.value.platform) as Function
-  )(id);
-
-  if (!j.title) return alert("解析失败！");
-  localOptions.value.idExplict = "";
-
-  document.title = `${j.title} - ${j.artist} - Pterosaur 网页音乐播放器`;
-  localOptions.value.id = id;
-  localData.value = JSON.parse(JSON.stringify(j));
+function update(ids?: string[]) {
+  if (ids)
+    ids.forEach(async (id) => {
+      if (!(await useHistoryStore().addSong(id))) return alert("解析失败！");
+      focusId.value = id;
+    });
+  songs.value = useHistoryStore().getSongs();
 }
 
-/**
- * 播放/暂停。
- */
-function play() {
-  const player = document.querySelector("audio") as HTMLAudioElement;
-  const signal = document.querySelector(".play") as HTMLButtonElement;
+function handleDownloadSource() {
+  window.open("https://github.com/penyoofficial/pterosaur", "_blank");
+}
 
-  if (player.paused) {
-    player.play();
-    signal.innerText = "| |";
-  } else {
-    player.pause();
-    signal.innerText = "▶";
+function handleSubmit(e: KeyboardEvent) {
+  if (e.code === "Enter") {
+    const input = e.target as HTMLInputElement;
+    const debugP = /^debug(::(.+?)?)?$/;
+    const urlP = /^https?:\/\/music.163.com\/song\?id=(\d+?)&userid=\d+?/;
+
+    if (debugP.test(input.value)) {
+      const option = input.value.match(debugP)?.[2];
+      router.push(`/debug${option ? "?option=" + option : ""}`);
+    } else if (urlP.test(input.value)) {
+      const id = input.value.match(urlP)?.[1] as string;
+      update([id]);
+    } else update(input.value.split(","));
+    input.value = "";
   }
 }
 
-/**
- * 优化字符串。
- *
- * @param str 待优化的字符串
- * @param type 字符串类型
- */
-function utilize(
-  params: { str: string; type: "lyrics" } | { str: number; type: "time" },
-) {
-  switch (params.type) {
-    case "lyrics":
-      return params.str.replace(/\[.+?\]/g, "<br>");
-    case "time":
-      const s = Math.floor(params.str);
-      const m = Math.floor(s / 60);
-      return `${m}:${(s - m * 60 + "").padStart(2, "0")}`;
+function handlePlayingOrder() {
+  if (state.value.cycleType < Object.keys(CycleType).length / 2 - 1)
+    state.value.cycleType++;
+  else state.value.cycleType = 0;
+}
+
+function handleSwitchWindow() {
+  let windowType = "/";
+  switch (router.currentRoute.value.path) {
+    case WindowType.LYRICS:
+      windowType = WindowType.HISTORY;
+      break;
+    case WindowType.HISTORY:
+      windowType = WindowType.LYRICS;
+      break;
   }
+  router.push(windowType);
 }
 
-/**
- * 改变播放时间。
- *
- * @param e 滚轮事件
- */
-function changePlayedTime(e: WheelEvent) {
-  e.preventDefault();
-
-  const Δ = e.deltaY / 100;
-  const player = document.querySelector("audio") as HTMLAudioElement;
-  player.currentTime += Δ;
+function handleVolume() {
+  state.value.isMute = !state.value.isMute;
 }
 
-update("1345485069");
+if (!focusId.value)
+  update(["1345485069", "2042620663", "1361188105", "551816010", "155883"]);
 </script>
-
 <template>
-  <audio
-    loop
-    :src="localData.mediaLink"
-    @timeupdate="
-      (e) =>
-        (localState.playedTime = (e.target as HTMLAudioElement).currentTime)
-    "
-    @durationchange="
-      (e) => (localState.totalTime = (e.target as HTMLAudioElement).duration)
-    "
-  ></audio>
-  <div class="bar top-bar">
-    <div class="main-logo">Pterosaur</div>
-    <ul class="modes">
-      <li v-for="p in platformTranslation">
-        <a
-          class="mode"
-          :class="p[0] == localOptions.platform ? 'chosen' : ''"
-          :id="p[0]"
-          @click="changePlatform(p[0])"
-          >{{ p[1] }}</a
+  <div class="fakeroot" :class="isNightMode ? 'dark' : 'light'">
+    <div class="shield">应用不能在当前分辨率下运行。</div>
+    <modern-bar position="top">
+      <div class="in-bar-box left">
+        <h1 id="logo">PTEROSAUR</h1>
+        <modern-button
+          content-type="text"
+          size="small"
+          @click="handleDownloadSource"
+          >下载源代码</modern-button
         >
-      </li>
-    </ul>
-    <div class="id-supplier">
-      <input
-        type="text"
-        class="id-giver"
-        placeholder="在此输入歌曲ID..."
-        v-model="localOptions.idExplict"
-      />
-      <button class="id-go" @click="update()">解析</button>
+      </div>
+      <div class="in-bar-box right">
+        <modern-button
+          :need-complex-fx="true"
+          @click="isNightMode = !isNightMode"
+          >{{ isNightMode ? "🔆" : "🌙" }}</modern-button
+        >
+        <modern-searcher @keypress="handleSubmit" />
+      </div>
+    </modern-bar>
+    <div class="window">
+      <router-view
+        :data-group="songs"
+        v-model:focusId="focusId"
+        v-model:state="state"
+        :update="update"
+      ></router-view>
     </div>
-  </div>
-  <div class="main-box">
-    <img class="cover" :src="localData.coverLink" alt="" />
-    <p
-      class="lyrics"
-      v-html="utilize({ str: localData.lyrics, type: 'lyrics' })"
-    ></p>
-  </div>
-  <div class="bar bottom-bar">
-    <div class="bottom-locator1">
-      <button class="play" @click="play">▶</button>
-    </div>
-    <div
-      class="progress-bar"
-      :style="`--progress: ${
-        (localState.playedTime / localState.totalTime) * 100
-      }%;`"
-      @wheel="changePlayedTime"
-    >
-      {{ utilize({ str: localState.playedTime, type: "time" }) }}
-      /
-      {{ utilize({ str: localState.totalTime, type: "time" }) }}
-    </div>
-    <div class="bottom-locator2">
-      <p class="song-title">{{ localData.title }}</p>
-      <p class="song-author">{{ localData.artist }}</p>
-    </div>
+    <modern-bar position="bottom">
+      <div class="in-bar-box left">
+        <song-info :data="songs.find((s) => s.id === focusId)" />
+      </div>
+      <div class="in-bar-box middle">
+        <player
+          :data-group="songs"
+          v-model:focusId="focusId"
+          v-model:state="state"
+          :update="update"
+        />
+      </div>
+      <div class="in-bar-box right">
+        <modern-button @click="handlePlayingOrder"
+          ><svg-icon
+            v-if="state.cycleType === CycleType.REPEAT_OFF"
+            type="mdi"
+            :path="mdiRepeatOff" /><svg-icon
+            v-else-if="state.cycleType === CycleType.REPEAT_ALL"
+            type="mdi"
+            :path="mdiRepeat" /><svg-icon
+            v-else-if="state.cycleType === CycleType.REPEAT_ONE"
+            type="mdi"
+            :path="mdiRepeatOnce" /><svg-icon
+            v-else-if="state.cycleType === CycleType.RANDOM"
+            type="mdi"
+            :path="mdiShuffle"
+        /></modern-button>
+        <modern-button @click="handleSwitchWindow"
+          ><svg-icon
+            v-if="$route.path === WindowType.LYRICS"
+            type="mdi"
+            :path="mdiCardText" /><svg-icon
+            v-else-if="$route.path === WindowType.HISTORY"
+            type="mdi"
+            :path="mdiPlaylistMusic" /><svg-icon
+            v-else-if="$route.path === WindowType.DEBUG"
+            type="mdi"
+            :path="mdiBug"
+        /></modern-button>
+        <modern-button @click="handleVolume"
+          ><svg-icon
+            v-if="!state.isMute"
+            type="mdi"
+            :path="mdiVolumeSource" /><svg-icon
+            v-else-if="state.isMute"
+            type="mdi"
+            :path="mdiVolumeMute"
+        /></modern-button>
+      </div>
+    </modern-bar>
   </div>
 </template>
-
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  font-family: Novecento, 思源黑体;
+div.shield {
+  display: none;
 }
 
-body {
-  background-color: #dddddd;
-  margin: 50px 0px 0px 0px;
-  width: 100%;
-  height: 100%;
-}
-
-.bar {
+div.window {
   position: fixed;
-  z-index: 999;
-  left: 0px;
-  width: 100%;
-  background-color: #ffffff;
-  z-index: 5;
-  box-shadow: 0px 0px 5px grey;
+  top: 4.2rem;
+  left: 0;
+  width: 100vw;
+  height: calc(100vh - 4.2rem - 4.8rem);
+  background: var(--c-background-L2);
 }
 
-.main-box {
+h1#logo {
   position: relative;
-  text-align: center;
+  margin-right: 1.8rem;
+  color: var(--c-text-L1);
+  font-family: Novecento;
+  user-select: none;
 }
 
-.cover {
-  position: fixed;
-  z-index: -1;
-  top: calc(60px);
-  left: 50%;
-  height: calc(100% - 60px - 80px);
-  transform: translateX(-50%);
-  filter: blur(5px) brightness(50%);
-}
-
-.lyrics {
-  top: 0px;
-  margin: 100px 0 120px;
-  color: #dddddd;
-}
-
-.top-bar {
-  top: 0px;
-  height: 60px;
-}
-
-.top-bar li {
-  float: left;
-  list-style: none;
-}
-
-.main-logo {
-  float: left;
-  font-weight: bold;
-  font-size: 28px;
-  line-height: 60px;
-  margin: 0px 40px;
-}
-
-.mode {
-  float: left;
-  font-size: 16px;
-  line-height: 60px;
-  padding: 0px 10px;
-  background-color: #fff;
-  color: #dddddd;
-}
-
-.mode:hover {
-  filter: brightness(95%);
-}
-
-.chosen {
-  color: black;
-  line-height: 50px;
-  border-bottom: 5px solid white;
-}
-
-.chosen#ncm {
-  border-top: 5px solid #c20c0c;
-}
-
-.chosen#qqm {
-  border-top: 5px solid #31c27c;
-}
-
-.chosen#kwm {
-  border-top: 5px solid #ffe443;
-}
-
-.id-supplier {
-  float: right;
-
-  * {
-    height: 30px;
-    position: relative;
-    margin: 15px 40px 0 0;
-    border: 0;
-    border-radius: 15px;
-  }
-
-  .id-giver {
-    right: -106px;
-    width: 270px;
-    line-height: 30px;
-    font-size: 18px;
-    text-indent: 1em;
-    background-color: #dddddd;
-  }
-
-  .id-go {
-    top: -2.7px;
-    padding: 0 20px;
-  }
-}
-
-.dev-go:active {
-  background: darkgray;
-}
-
-.bottom-bar {
-  bottom: 0px;
-  height: 80px;
-}
-
-.bottom-locator1 {
-  padding: 16px 40px;
-  float: left;
-}
-
-.play {
-  width: 200px;
-  height: 48px;
-  border-radius: 15px;
-  background: gray;
-  font-weight: bold;
-  font-size: 24px;
-  color: #ffffff;
-  line-height: 48px;
-  border: none;
-  padding: 0px;
-}
-
-.play:active {
-  background: darkgray;
-}
-
-.progress-bar {
-  position: absolute;
-  width: 100%;
-  height: 2px;
-  background: #aaa;
-  text-align: center;
-  line-height: 80px;
-  color: #aaa;
-}
-
-.progress-bar::before {
+h1#logo::before,
+h1#logo::after {
   content: "";
   position: absolute;
-  display: block;
-  width: var(--progress);
-  height: 100%;
-  background: #444;
+  z-index: -1;
+  background: var(--c-highlight);
 }
 
-.bottom-locator2 {
-  float: right;
-  padding: 12px 40px;
-  text-align: right;
-  font-weight: bolder;
+h1#logo::before {
+  right: -0.3rem;
+  bottom: -0.05rem;
+  width: 60%;
+  height: 30%;
 }
 
-.song-title {
-  font-size: 28px;
-  line-height: 32px;
+h1#logo::after {
+  right: -0.25rem;
+  top: 0.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.75rem;
 }
 
-.song-author {
-  font-size: 20px;
-  line-height: 24px;
+.in-bar-box {
+  display: flex;
+  flex: 1;
+  align-items: center;
 }
 
-.cir {
-  width: 30px;
-  height: 30px;
-  border-radius: 15px;
-  background: gray;
-  color: #ffffff;
-  border: none;
-}
+.in-bar-box.left {
+  justify-content: flex-start;
 
-.cir:active {
-  background: darkgray;
-}
-
-@media screen and (max-width: 800px) {
-  .main-logo {
-    margin-right: 0;
+  * {
+    margin-right: 1rem;
   }
+}
 
-  .modes {
-    display: none;
+.in-bar-box.middle {
+  justify-content: center;
+  flex: 0.85;
+
+  * {
+    margin: 0 0.5rem;
   }
+}
 
-  .play {
-    width: 100px;
+.in-bar-box.right {
+  justify-content: flex-end;
+
+  * {
+    margin-left: 1rem;
+  }
+}
+
+@media screen and ((max-width: 800px) or (max-height: 600px)) {
+  div.shield {
+    position: fixed;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: var(--c-highlight);
+    color: var(--c-background-L1);
   }
 }
 </style>

@@ -1,0 +1,44 @@
+:root {
+  --c-highlight: #88aaff;
+
+  --c-background-L1: #fff;
+  --c-background-L2: #eee;
+  --c-background-L3: #ddd;
+  --c-border: #88888844;
+  --c-text-L1: #333;
+  --c-text-L2: #666;
+}
+
+:root .dark {
+  --c-background-L1: #242424;
+  --c-background-L2: #121212;
+  --c-text-L1: #eee;
+  --c-text-L2: #888;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  transition:
+    background-color 0.5s,
+    color 0.5s,
+    transform 0.5s;
+}
+
+::selection {
+  background: var(--c-highlight);
+}
+
+::-webkit-scrollbar {
+  background: var(--c-background-L2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-background-L1);
+}
+
+svg[width="24"] {
+  position: relative;
+  top: 0.42rem;
+  margin: 0 !important;
+}

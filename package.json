@@ -1,6 +1,6 @@
 {
   "name": "pterosaur",
-  "version": "2.0.2",
+  "version": "2.1.5",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -14,6 +14,8 @@
     "prettier": "prettier -w ./src/* ./src/*/*"
   },
   "dependencies": {
+    "@jamescoyle/vue-icon": "^0.1.2",
+    "@mdi/js": "^7.3.67",
     "pinia": "^2.1.6",
     "vue": "^3.3.4",
     "vue-router": "^4.2.4"
